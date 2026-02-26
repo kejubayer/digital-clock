@@ -35,5 +35,7 @@ This project is ideal for **personal dashboards, office displays, smart TV scree
 
 ## 🚀 Live Demo
 
-You can host your own copy of this clock using GitHub Pages:
+Check out the **fullscreen responsive digital clock** online:  
+[Live Demo](https://kejubayer.github.io/digital-clock/)
+
 
