@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fullscreen Digital Clock</title>
+
+<!-- Favicon -->
+<link rel="icon" href="clock-icon.png" type="image/png">
+
+<!-- Manifest for mobile shortcut -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    background: #000;
+    color: #fff;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* CLOCK */
+.clock {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+    font-weight: bold;
+    color: #fff;
+    text-shadow:
+        0 0 20px rgba(255,255,255,0.3),
+        0 0 40px rgba(255,255,255,0.2);
+}
+
+/* individual digit */
+.digit {
+    min-width: 100px;
+    font-size: 12vw; /* responsive size */
+}
+
+/* animate digit change */
+.animate {
+    animation: fadeUp 0.4s ease;
+}
+
+@keyframes fadeUp {
+    0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* DATE & DAY */
+.date {
+    margin-top: 20px;
+    font-size: 4vw;
+    opacity: 0.8;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+/* responsive adjustments */
+@media (max-width: 768px) {
+    .digit { min-width: 60px; font-size: 20vw; }
+    .date { font-size: 5vw; }
+}
+
+@media (max-width: 480px) {
+    .digit { min-width: 40px; font-size: 25vw; }
+    .date { font-size: 6vw; }
+}
+</style>
+
+</head>
+<body>
+
+<div class="clock">
+    <div class="digit" id="h1">0</div>
+    <div class="digit" id="h2">0</div>
+    <div class="digit">:</div>
+    <div class="digit" id="m1">0</div>
+    <div class="digit" id="m2">0</div>
+    <div class="digit">:</div>
+    <div class="digit" id="s1">0</div>
+    <div class="digit" id="s2">0</div>
+</div>
+
+<div class="date" id="date">Loading date...</div>
+
+
+<script>
+let prevTime = "";
+
+/* update time */
+function updateClock() {
+    const now = new Date();
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, "");
+    const ids = ['h1','h2','m1','m2','s1','s2'];
+
+    for (let i = 0; i < time.length; i++) {
+        const el = document.getElementById(ids[i]);
+        if (el.textContent !== time[i]) {
+            el.textContent = time[i];
+            el.classList.remove('animate');
+            void el.offsetWidth; // force reflow
+            el.classList.add('animate');
+        }
+    }
+}
+
+/* update date */
+function updateDate() {
+    const now = new Date();
+    const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    document.getElementById("date").textContent = now.toLocaleDateString(undefined, options);
+}
+
+/* INIT */
+setInterval(updateClock, 1000);
+updateClock();
+
+updateDate();
+setInterval(updateDate, 60000);
+</script>
+
+<script>
+let deferredPrompt;
+
+// Listen for the PWA install prompt event
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome from showing default prompt
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('addShortcutBtn').style.display = 'inline-block';
+});
+
+// Keyboard fullscreen toggle
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }
+});
+</script>
+
+</body>
+</html>
