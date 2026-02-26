@@ -4,89 +4,52 @@
 <meta charset="UTF-8">
 <title>Fullscreen Digital Clock</title>
 
-<!-- Favicon -->
 <link rel="icon" href="clock-icon.png" type="image/png">
-
-<!-- Manifest for mobile shortcut -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Arial', sans-serif;
-}
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
 
-html, body {
-    height: 100%;
-    width: 100%;
-    background: #000;
-    color: #fff;
-}
+html, body { height:100%; width:100%; background:#000; color:#fff; }
 
-body {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
+body { display:flex; flex-direction:column; justify-content:center; align-items:center; }
 
-/* CLOCK */
 .clock {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-    text-align: center;
-    font-weight: bold;
-    color: #fff;
-    text-shadow:
-        0 0 20px rgba(255,255,255,0.3),
-        0 0 40px rgba(255,255,255,0.2);
+    display:flex; gap:15px; flex-wrap:wrap; justify-content:center; text-align:center;
+    font-weight:bold; color:#fff;
+    text-shadow: 0 0 20px rgba(255,255,255,0.3),0 0 40px rgba(255,255,255,0.2);
 }
 
-/* individual digit */
-.digit {
-    min-width: 100px;
-    font-size: 12vw; /* responsive size */
+.digit { min-width:100px; font-size:12vw; }
+
+.ampm { font-size:5vw; align-self:flex-end; margin-bottom:15px; opacity:0.8; }
+
+.animate { animation: fadeUp 0.4s ease; }
+@keyframes fadeUp { 0%{opacity:0; transform:translateY(20px) scale(0.95);} 100%{opacity:1; transform:translateY(0) scale(1);} }
+
+.date { margin-top:20px; font-size:4vw; opacity:0.8; letter-spacing:1px; text-align:center; }
+
+/* Instruction and button */
+.format-toggle, .instruction {
+    margin-top:20px; text-align:center; transition: opacity 0.3s;
 }
 
-/* animate digit change */
-.animate {
-    animation: fadeUp 0.4s ease;
+.format-toggle button {
+    padding:10px 20px; font-size:1rem; border:none; border-radius:5px;
+    cursor:pointer; background:#fff; color:#000; font-weight:bold;
+    box-shadow:0 0 10px rgba(255,255,255,0.2);
 }
 
-@keyframes fadeUp {
-    0% { opacity: 0; transform: translateY(20px) scale(0.95); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-}
+.format-toggle button:hover { background:#ddd; }
 
-/* DATE & DAY */
-.date {
-    margin-top: 20px;
-    font-size: 4vw;
-    opacity: 0.8;
-    letter-spacing: 1px;
-    text-align: center;
-}
-
-/* responsive adjustments */
-@media (max-width: 768px) {
-    .digit { min-width: 60px; font-size: 20vw; }
-    .date { font-size: 5vw; }
-}
-
-@media (max-width: 480px) {
-    .digit { min-width: 40px; font-size: 25vw; }
-    .date { font-size: 6vw; }
-}
+@media(max-width:768px){ .digit{min-width:60px; font-size:20vw;} .date{font-size:5vw;} .ampm{font-size:4vw;} .format-toggle button{font-size:0.9rem; padding:8px 16px;} }
+@media(max-width:480px){ .digit{min-width:40px; font-size:25vw;} .date{font-size:6vw;} .ampm{font-size:5vw;} .format-toggle button{font-size:0.8rem; padding:6px 12px;} }
 </style>
-
 </head>
 <body>
 
+<!-- Clock -->
 <div class="clock">
     <div class="digit" id="h1">0</div>
     <div class="digit" id="h2">0</div>
@@ -96,65 +59,95 @@ body {
     <div class="digit">:</div>
     <div class="digit" id="s1">0</div>
     <div class="digit" id="s2">0</div>
+    <div class="ampm" id="ampm">AM</div>
 </div>
 
 <div class="date" id="date">Loading date...</div>
 
+<!-- Instruction -->
+<div class="instruction" id="instruction">Press <b>F</b> to toggle fullscreen</div>
+
+<!-- Format Toggle -->
+<div class="format-toggle" id="formatDiv">
+    <button id="toggleFormat">Switch to 24H</button>
+</div>
 
 <script>
-let prevTime = "";
+// LocalStorage format
+let is12Hour = localStorage.getItem('clockFormat') === '24' ? false : true;
+document.getElementById('toggleFormat').textContent = is12Hour ? 'Switch to 24H' : 'Switch to 12H';
 
-/* update time */
+document.getElementById('toggleFormat').addEventListener('click', () => {
+    is12Hour = !is12Hour;
+    localStorage.setItem('clockFormat', is12Hour ? '12' : '24');
+    document.getElementById('toggleFormat').textContent = is12Hour ? 'Switch to 24H' : 'Switch to 12H';
+    updateClock();
+});
+
 function updateClock() {
     const now = new Date();
-    const time = now.toTimeString().slice(0, 8).replace(/:/g, "");
-    const ids = ['h1','h2','m1','m2','s1','s2'];
+    let hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    let ampm = '';
 
-    for (let i = 0; i < time.length; i++) {
+    if(is12Hour){
+        ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if(hours===0) hours = 12;
+    }
+
+    const hStr = hours.toString().padStart(2,'0');
+    const mStr = minutes.toString().padStart(2,'0');
+    const sStr = seconds.toString().padStart(2,'0');
+    const timeArray = hStr+mStr+sStr;
+    const ids=['h1','h2','m1','m2','s1','s2'];
+
+    for(let i=0;i<timeArray.length;i++){
         const el = document.getElementById(ids[i]);
-        if (el.textContent !== time[i]) {
-            el.textContent = time[i];
+        if(el.textContent!==timeArray[i]){
+            el.textContent = timeArray[i];
             el.classList.remove('animate');
-            void el.offsetWidth; // force reflow
+            void el.offsetWidth;
             el.classList.add('animate');
         }
     }
+    document.getElementById('ampm').textContent = is12Hour ? ampm : '';
 }
 
-/* update date */
-function updateDate() {
-    const now = new Date();
-    const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+function updateDate(){
+    const now=new Date();
+    const options={weekday:'long', day:'numeric', month:'long', year:'numeric'};
     document.getElementById("date").textContent = now.toLocaleDateString(undefined, options);
 }
 
-/* INIT */
-setInterval(updateClock, 1000);
+// Initialize
 updateClock();
-
+setInterval(updateClock,1000);
 updateDate();
-setInterval(updateDate, 60000);
-</script>
+setInterval(updateDate,60000);
 
-<script>
-let deferredPrompt;
-
-// Listen for the PWA install prompt event
-window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevent Chrome from showing default prompt
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('addShortcutBtn').style.display = 'inline-block';
-});
-
-// Keyboard fullscreen toggle
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'f' || e.key === 'F') {
-        if (!document.fullscreenElement) {
+// Fullscreen toggle F key
+document.addEventListener('keydown',(e)=>{
+    if(e.key==='f'||e.key==='F'){
+        if(!document.fullscreenElement){
             document.documentElement.requestFullscreen();
         } else {
             document.exitFullscreen();
         }
+    }
+});
+
+// Hide/show buttons and instruction in fullscreen
+document.addEventListener('fullscreenchange',()=>{
+    const formatDiv = document.getElementById('formatDiv');
+    const instruction = document.getElementById('instruction');
+    if(document.fullscreenElement){
+        formatDiv.style.display='none';
+        instruction.style.display='none';
+    } else {
+        formatDiv.style.display='block';
+        instruction.style.display='block';
     }
 });
 </script>
