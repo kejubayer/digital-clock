@@ -173,23 +173,7 @@ function updateDate(){
         day: 'numeric'
     }).format(now);
 
-    const banglaWeekday = new Intl.DateTimeFormat('bn-BD', { weekday: 'long' }).format(now);
-
-    const banglaDateParts = new Intl.DateTimeFormat('bn-BD-u-ca-beng', {
-        day: 'numeric',
-        month: 'long'
-    }).formatToParts(now);
-    const banglaDay = banglaDateParts.find((part) => part.type === 'day')?.value || '';
-    const banglaMonth = banglaDateParts.find((part) => part.type === 'month')?.value || '';
-
-    const hijriDateParts = new Intl.DateTimeFormat('bn-BD-u-ca-islamic', {
-        day: 'numeric',
-        month: 'long'
-    }).formatToParts(now);
-    const hijriDay = hijriDateParts.find((part) => part.type === 'day')?.value || '';
-    const hijriMonth = hijriDateParts.find((part) => part.type === 'month')?.value || '';
-
-    document.getElementById('date').innerHTML = `${englishDate}<br>${banglaWeekday} , ${banglaDay} ${banglaMonth} , ${hijriDay} ${hijriMonth}`;
+    document.getElementById('date').textContent = englishDate;
 }
 
 
