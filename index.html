@@ -166,7 +166,14 @@ function updateClock() {
 function updateDate(){
     const now = new Date();
 
-    const weekday = new Intl.DateTimeFormat('bn-BD', { weekday: 'long' }).format(now);
+    const englishDate = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    }).format(now);
+
+    const banglaWeekday = new Intl.DateTimeFormat('bn-BD', { weekday: 'long' }).format(now);
 
     const banglaDateParts = new Intl.DateTimeFormat('bn-BD-u-ca-beng', {
         day: 'numeric',
@@ -182,7 +189,7 @@ function updateDate(){
     const hijriDay = hijriDateParts.find((part) => part.type === 'day')?.value || '';
     const hijriMonth = hijriDateParts.find((part) => part.type === 'month')?.value || '';
 
-    document.getElementById('date').textContent = `${weekday} , ${banglaDay} ${banglaMonth} , ${hijriDay} ${hijriMonth}`;
+    document.getElementById('date').innerHTML = `${englishDate}<br>${banglaWeekday} , ${banglaDay} ${banglaMonth} , ${hijriDay} ${hijriMonth}`;
 }
 
 
