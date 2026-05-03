@@ -29,7 +29,46 @@ body { display:flex; flex-direction:column; justify-content:center; align-items:
 @keyframes fadeUp { 0%{opacity:0; transform:translateY(20px) scale(0.95);} 100%{opacity:1; transform:translateY(0) scale(1);} }
 
 .date { margin-top:20px; font-size:4vw; opacity:0.8; letter-spacing:1px; text-align:center; }
-.info { margin-top:10px; font-size:2.2vw; opacity:0.9; text-align:center; }
+.info-panel {
+    margin-top: 16px;
+    padding: 16px 20px;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+    min-width: min(90vw, 520px);
+    backdrop-filter: blur(8px);
+}
+
+.info {
+    font-size: clamp(0.95rem, 2vw, 1.25rem);
+    opacity: 0.95;
+    text-align: center;
+}
+
+.location-row {
+    font-size: clamp(1rem, 2.3vw, 1.35rem);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+.weather-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.weather-emoji {
+    font-size: clamp(1.2rem, 2.8vw, 1.7rem);
+}
+
+.weather-detail {
+    margin-top: 6px;
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    opacity: 0.78;
+}
 
 /* Instruction and button */
 .format-toggle, .instruction {
@@ -44,8 +83,8 @@ body { display:flex; flex-direction:column; justify-content:center; align-items:
 
 .format-toggle button:hover { background:#ddd; }
 
-@media(max-width:768px){ .digit{min-width:60px; font-size:20vw;} .date{font-size:5vw;} .info{font-size:3.8vw;} .ampm{font-size:4vw;} .format-toggle button{font-size:0.9rem; padding:8px 16px;} }
-@media(max-width:480px){ .digit{min-width:40px; font-size:25vw;} .date{font-size:6vw;} .info{font-size:4.8vw;} .ampm{font-size:5vw;} .format-toggle button{font-size:0.8rem; padding:6px 12px;} }
+@media(max-width:768px){ .digit{min-width:60px; font-size:20vw;} .date{font-size:5vw;} .ampm{font-size:4vw;} .format-toggle button{font-size:0.9rem; padding:8px 16px;} .info-panel{padding:14px 16px;} }
+@media(max-width:480px){ .digit{min-width:40px; font-size:25vw;} .date{font-size:6vw;} .ampm{font-size:5vw;} .format-toggle button{font-size:0.8rem; padding:6px 12px;} .info-panel{padding:12px 14px;} }
 </style>
 </head>
 <body>
@@ -64,8 +103,14 @@ body { display:flex; flex-direction:column; justify-content:center; align-items:
 </div>
 
 <div class="date" id="date">Loading date...</div>
-<div class="info" id="location">Loading location...</div>
-<div class="info" id="weather">Loading weather...</div>
+<div class="info-panel">
+    <div class="info location-row" id="location">📍 Loading location...</div>
+    <div class="info weather-row" id="weatherRow">
+        <span class="weather-emoji" id="weatherEmoji">⛅</span>
+        <span id="weather">Loading weather...</span>
+    </div>
+    <div class="info weather-detail" id="weatherDetail">Fetching local conditions…</div>
+</div>
 
 <!-- Instruction -->
 <div class="instruction" id="instruction">Press <b>F</b> to toggle fullscreen</div>
@@ -128,6 +173,32 @@ function updateDate(){
 async function updateLocationAndWeather(){
     const locationEl = document.getElementById('location');
     const weatherEl = document.getElementById('weather');
+    const weatherEmojiEl = document.getElementById('weatherEmoji');
+    const weatherDetailEl = document.getElementById('weatherDetail');
+
+    const weatherCodeMap = {
+        0: ['☀️', 'Clear sky'],
+        1: ['🌤️', 'Mainly clear'],
+        2: ['⛅', 'Partly cloudy'],
+        3: ['☁️', 'Overcast'],
+        45: ['🌫️', 'Fog'],
+        48: ['🌫️', 'Depositing rime fog'],
+        51: ['🌦️', 'Light drizzle'],
+        53: ['🌦️', 'Drizzle'],
+        55: ['🌧️', 'Dense drizzle'],
+        61: ['🌦️', 'Slight rain'],
+        63: ['🌧️', 'Rain'],
+        65: ['🌧️', 'Heavy rain'],
+        71: ['🌨️', 'Slight snow'],
+        73: ['❄️', 'Snow'],
+        75: ['❄️', 'Heavy snow'],
+        80: ['🌦️', 'Rain showers'],
+        81: ['🌧️', 'Rain showers'],
+        82: ['⛈️', 'Violent rain showers'],
+        95: ['⛈️', 'Thunderstorm'],
+        96: ['⛈️', 'Thunderstorm with hail'],
+        99: ['⛈️', 'Severe thunderstorm with hail']
+    };
 
     try{
         const ipInfoRes = await fetch('https://ipinfo.io/json');
@@ -138,7 +209,8 @@ async function updateLocationAndWeather(){
         const region = ipInfo.region || '';
         const country = ipInfo.country || '';
         const parts = [city, region, country].filter(Boolean);
-        locationEl.textContent = `Location: ${parts.join(', ')}`;
+        const timezone = ipInfo.timezone ? ` • ${ipInfo.timezone}` : '';
+        locationEl.textContent = `📍 ${parts.join(', ')}${timezone}`;
 
         const [latitude, longitude] = (ipInfo.loc || '').split(',');
         if(!latitude || !longitude) throw new Error('Missing coordinates from location API');
@@ -151,10 +223,19 @@ async function updateLocationAndWeather(){
         const current = weatherData.current_weather;
         if(!current) throw new Error('No current weather data');
 
-        weatherEl.textContent = `Weather: ${current.temperature}°C, wind ${current.windspeed} km/h`;
+        const [emoji, condition] = weatherCodeMap[current.weathercode] || ['🌡️', 'Current conditions'];
+        const roundedTemp = Math.round(current.temperature);
+        const feelsLike = current.apparent_temperature !== undefined ? Math.round(current.apparent_temperature) : null;
+        weatherEmojiEl.textContent = emoji;
+        weatherEl.textContent = `${condition} • ${roundedTemp}°C`;
+        weatherDetailEl.textContent = feelsLike !== null
+            ? `Feels like ${feelsLike}°C • Wind ${Math.round(current.windspeed)} km/h`
+            : `Wind ${Math.round(current.windspeed)} km/h`;
     } catch(error){
-        locationEl.textContent = 'Location: unavailable';
-        weatherEl.textContent = 'Weather: unavailable';
+        locationEl.textContent = '📍 Location unavailable';
+        weatherEmojiEl.textContent = '⚠️';
+        weatherEl.textContent = 'Weather unavailable';
+        weatherDetailEl.textContent = 'Check network access and try again.';
         console.error(error);
     }
 }
