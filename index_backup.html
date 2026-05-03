@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fullscreen Digital Clock</title>
+
+<link rel="icon" href="clock-icon.png" type="image/png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+
+html, body { height:100%; width:100%; background:#000; color:#fff; }
+
+body { display:flex; flex-direction:column; justify-content:center; align-items:center; }
+
+.clock {
+    display:flex; gap:15px; flex-wrap:wrap; justify-content:center; text-align:center;
+    font-weight:bold; color:#fff;
+    text-shadow: 0 0 20px rgba(255,255,255,0.3),0 0 40px rgba(255,255,255,0.2);
+}
+
+.digit { min-width:100px; font-size:12vw; }
+
+.ampm { font-size:5vw; align-self:flex-end; margin-bottom:15px; opacity:0.8; }
+
+.animate { animation: fadeUp 0.4s ease; }
+@keyframes fadeUp { 0%{opacity:0; transform:translateY(20px) scale(0.95);} 100%{opacity:1; transform:translateY(0) scale(1);} }
+
+.date { margin-top:20px; font-size:4vw; opacity:0.8; letter-spacing:1px; text-align:center; }
+.info-panel {
+    margin-top: 16px;
+    padding: 16px 20px;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+    min-width: min(90vw, 520px);
+    backdrop-filter: blur(8px);
+}
+
+.info {
+    font-size: clamp(0.95rem, 2vw, 1.25rem);
+    opacity: 0.95;
+    text-align: center;
+}
+
+.location-row {
+    font-size: clamp(1rem, 2.3vw, 1.35rem);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+.weather-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.weather-emoji {
+    font-size: clamp(1.2rem, 2.8vw, 1.7rem);
+}
+
+.weather-detail {
+    margin-top: 6px;
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    opacity: 0.78;
+}
+
+/* Instruction and button */
+.format-toggle, .instruction {
+    margin-top:20px; text-align:center; transition: opacity 0.3s;
+}
+
+.format-toggle button {
+    padding:10px 20px; font-size:1rem; border:none; border-radius:5px;
+    cursor:pointer; background:#fff; color:#000; font-weight:bold;
+    box-shadow:0 0 10px rgba(255,255,255,0.2);
+}
+
+.format-toggle button:hover { background:#ddd; }
+
+@media(max-width:768px){ .digit{min-width:60px; font-size:20vw;} .date{font-size:5vw;} .ampm{font-size:4vw;} .format-toggle button{font-size:0.9rem; padding:8px 16px;} .info-panel{padding:14px 16px;} }
+@media(max-width:480px){ .digit{min-width:40px; font-size:25vw;} .date{font-size:6vw;} .ampm{font-size:5vw;} .format-toggle button{font-size:0.8rem; padding:6px 12px;} .info-panel{padding:12px 14px;} }
+</style>
+</head>
+<body>
+
+<!-- Clock -->
+<div class="clock">
+    <div class="digit" id="h1">0</div>
+    <div class="digit" id="h2">0</div>
+    <div class="digit">:</div>
+    <div class="digit" id="m1">0</div>
+    <div class="digit" id="m2">0</div>
+    <div class="digit">:</div>
+    <div class="digit" id="s1">0</div>
+    <div class="digit" id="s2">0</div>
+    <div class="ampm" id="ampm">AM</div>
+</div>
+
+<div class="date" id="date">Loading date...</div>
+<div class="info-panel">
+    <div class="info location-row" id="location">📍 Loading location...</div>
+    <div class="info weather-row" id="weatherRow">
+        <span class="weather-emoji" id="weatherEmoji">⛅</span>
+        <span id="weather">Loading weather...</span>
+    </div>
+    <div class="info weather-detail" id="weatherDetail">Fetching local conditions…</div>
+</div>
+
+<!-- Instruction -->
+<div class="instruction" id="instruction">Press <b>F</b> to toggle fullscreen</div>
+
+<!-- Format Toggle -->
+<div class="format-toggle" id="formatDiv">
+    <button id="toggleFormat">Switch to 24H</button>
+</div>
+
+<script>
+// LocalStorage format
+let is12Hour = localStorage.getItem('clockFormat') === '24' ? false : true;
+document.getElementById('toggleFormat').textContent = is12Hour ? 'Switch to 24H' : 'Switch to 12H';
+
+document.getElementById('toggleFormat').addEventListener('click', () => {
+    is12Hour = !is12Hour;
+    localStorage.setItem('clockFormat', is12Hour ? '12' : '24');
+    document.getElementById('toggleFormat').textContent = is12Hour ? 'Switch to 24H' : 'Switch to 12H';
+    updateClock();
+});
+
+function updateClock() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    let ampm = '';
+
+    if(is12Hour){
+        ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if(hours===0) hours = 12;
+    }
+
+    const hStr = hours.toString().padStart(2,'0');
+    const mStr = minutes.toString().padStart(2,'0');
+    const sStr = seconds.toString().padStart(2,'0');
+    const timeArray = hStr+mStr+sStr;
+    const ids=['h1','h2','m1','m2','s1','s2'];
+
+    for(let i=0;i<timeArray.length;i++){
+        const el = document.getElementById(ids[i]);
+        if(el.textContent!==timeArray[i]){
+            el.textContent = timeArray[i];
+            el.classList.remove('animate');
+            void el.offsetWidth;
+            el.classList.add('animate');
+        }
+    }
+    document.getElementById('ampm').textContent = is12Hour ? ampm : '';
+}
+
+function updateDate(){
+    const now = new Date();
+
+    const englishDate = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    }).format(now);
+
+    document.getElementById('date').textContent = englishDate;
+}
+
+
+async function updateLocationAndWeather(){
+    const locationEl = document.getElementById('location');
+    const weatherEl = document.getElementById('weather');
+    const weatherEmojiEl = document.getElementById('weatherEmoji');
+    const weatherDetailEl = document.getElementById('weatherDetail');
+
+    const weatherCodeMap = {
+        0: ['☀️', 'Clear sky'],
+        1: ['🌤️', 'Mainly clear'],
+        2: ['⛅', 'Partly cloudy'],
+        3: ['☁️', 'Overcast'],
+        45: ['🌫️', 'Fog'],
+        48: ['🌫️', 'Depositing rime fog'],
+        51: ['🌦️', 'Light drizzle'],
+        53: ['🌦️', 'Drizzle'],
+        55: ['🌧️', 'Dense drizzle'],
+        61: ['🌦️', 'Slight rain'],
+        63: ['🌧️', 'Rain'],
+        65: ['🌧️', 'Heavy rain'],
+        71: ['🌨️', 'Slight snow'],
+        73: ['❄️', 'Snow'],
+        75: ['❄️', 'Heavy snow'],
+        80: ['🌦️', 'Rain showers'],
+        81: ['🌧️', 'Rain showers'],
+        82: ['⛈️', 'Violent rain showers'],
+        95: ['⛈️', 'Thunderstorm'],
+        96: ['⛈️', 'Thunderstorm with hail'],
+        99: ['⛈️', 'Severe thunderstorm with hail']
+    };
+
+    try{
+        const ipInfoRes = await fetch('https://ipinfo.io/json');
+        if(!ipInfoRes.ok) throw new Error('Location API request failed');
+        const ipInfo = await ipInfoRes.json();
+
+        const city = ipInfo.city || 'Unknown city';
+        const region = ipInfo.region || '';
+        const country = ipInfo.country || '';
+        const parts = [city, region, country].filter(Boolean);
+        const timezone = ipInfo.timezone ? ` • ${ipInfo.timezone}` : '';
+        locationEl.textContent = `📍 ${parts.join(', ')}${timezone}`;
+
+        const [latitude, longitude] = (ipInfo.loc || '').split(',');
+        if(!latitude || !longitude) throw new Error('Missing coordinates from location API');
+
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+        const weatherRes = await fetch(weatherUrl);
+        if(!weatherRes.ok) throw new Error('Weather API request failed');
+        const weatherData = await weatherRes.json();
+
+        const current = weatherData.current_weather;
+        if(!current) throw new Error('No current weather data');
+
+        const [emoji, condition] = weatherCodeMap[current.weathercode] || ['🌡️', 'Current conditions'];
+        const roundedTemp = Math.round(current.temperature);
+        const feelsLike = current.apparent_temperature !== undefined ? Math.round(current.apparent_temperature) : null;
+        weatherEmojiEl.textContent = emoji;
+        weatherEl.textContent = `${condition} • ${roundedTemp}°C`;
+        weatherDetailEl.textContent = feelsLike !== null
+            ? `Feels like ${feelsLike}°C • Wind ${Math.round(current.windspeed)} km/h`
+            : `Wind ${Math.round(current.windspeed)} km/h`;
+    } catch(error){
+        locationEl.textContent = '📍 Location unavailable';
+        weatherEmojiEl.textContent = '⚠️';
+        weatherEl.textContent = 'Weather unavailable';
+        weatherDetailEl.textContent = 'Check network access and try again.';
+        console.error(error);
+    }
+}
+
+// Initialize
+updateClock();
+setInterval(updateClock,1000);
+updateDate();
+setInterval(updateDate,60000);
+updateLocationAndWeather();
+setInterval(updateLocationAndWeather,600000);
+
+// Fullscreen toggle F key
+document.addEventListener('keydown',(e)=>{
+    if(e.key==='f'||e.key==='F'){
+        if(!document.fullscreenElement){
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    }
+});
+
+// Hide/show buttons and instruction in fullscreen
+document.addEventListener('fullscreenchange',()=>{
+    const formatDiv = document.getElementById('formatDiv');
+    const instruction = document.getElementById('instruction');
+    if(document.fullscreenElement){
+        formatDiv.style.display='none';
+        instruction.style.display='none';
+    } else {
+        formatDiv.style.display='block';
+        instruction.style.display='block';
+    }
+});
+</script>
+
+</body>
+</html>
